@@ -3,6 +3,8 @@ const multer = require("multer");
 const fs = require("fs-extra");
 const path = require("path");
 const AdmZip = require("adm-zip");
+const http = require("http");
+const https = require("https");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -466,7 +468,6 @@ body{
 }
 .subtitle{color:var(--muted); font-size:14px; margin-top:5px;}
 
-/* Single Thin Container for Stats with RGB Glow */
 .stats-container{
   display:flex;
   justify-content:space-around;
@@ -578,7 +579,6 @@ textarea {
 .menu-btn:hover{transform:translateY(-2px);}
 .note{color:#718096; font-size:12px; margin-bottom:12px;}
 
-/* Tabs for File Upload & Code Paste */
 .deploy-tabs {
   display: flex;
   gap: 10px;
@@ -726,7 +726,7 @@ if(deployForm){
 });
 
 // ======================================================
-// MY PROJECTS PAGE (SEPARATE PAGE)
+// MY PROJECTS PAGE (SEPARATE PAGE - REDESIGNED WITH RGB & CLEAN UI)
 // ======================================================
 
 app.get("/projects", (req, res) => {
@@ -774,40 +774,44 @@ app.get("/projects", (req, res) => {
   const projectHTML = projects.length
     ? projects.map(
         project => `
-      <div class="project" data-search="${escapeAttribute(
+      <div class="project-card-wrap" data-search="${escapeAttribute(
         `${project.title} ${project.name} ${project.slug} ${project.description} ${project.keywords}`
       )}">
-        <div class="project-info">
-          <div class="project-topline">
-            <div class="project-icon">🌐</div>
-            <div>
-              <div class="project-name">${escapeHtml(project.title)}</div>
-              <div class="project-id">Project ID: ${escapeHtml(project.name)}</div>
+        <div class="project">
+          <div class="project-header">
+            <div class="project-left">
+              <div class="project-icon">🌐</div>
+              <div>
+                <div class="project-name">${escapeHtml(project.title)}</div>
+                <div class="project-id">ID: ${escapeHtml(project.name)}</div>
+              </div>
+            </div>
+            <div class="project-meta-badge">
+              <span>💾 ${escapeHtml(project.size)} KB</span>
+              <span class="live-dot-badge">● Live</span>
             </div>
           </div>
-          <div class="project-url-row">
-            <a class="project-url" href="/site/${encodeURIComponent(project.slug)}/" target="_blank" rel="noopener">/site/${escapeHtml(project.slug)}/</a>
-            <button class="copy-url" type="button" data-url="/site/${encodeURIComponent(project.slug)}/">📋 Copy</button>
+
+          <div class="project-url-container">
+            <span class="url-text">/site/${escapeHtml(project.slug)}/</span>
+            <button class="copy-url-btn" type="button" data-url="/site/${encodeURIComponent(project.slug)}/">📋 Copy Link</button>
           </div>
-          <div class="project-meta">
-            <span>💾 ${escapeHtml(project.size)} KB</span>
-            <span>● Live</span>
+
+          <div class="project-actions">
+            <a class="action-btn live-btn" href="/site/${encodeURIComponent(project.slug)}/" target="_blank" rel="noopener">🌐 Live View</a>
+            <a class="action-btn edit-btn" href="/edit/${encodeURIComponent(project.name)}">✏️ Edit</a>
+            <form action="/delete/${encodeURIComponent(project.name)}" method="POST" onsubmit="return confirm('এই প্রজেক্টটি কি সত্যি ডিলিট করতে চান?')" style="margin:0; flex:1; display:flex;">
+              <button class="action-btn delete-btn" type="submit">🗑 Delete</button>
+            </form>
           </div>
-        </div>
-        <div class="actions">
-          <a class="action-btn live-btn" href="/site/${encodeURIComponent(project.slug)}/" target="_blank" rel="noopener">🌐 Live</a>
-          <a class="action-btn edit-btn" href="/edit/${encodeURIComponent(project.name)}">✏️ Edit</a>
-          <form action="/delete/${encodeURIComponent(project.name)}" method="POST" onsubmit="return confirm('এই project delete করতে চান?')">
-            <button class="action-btn delete-btn" type="submit">🗑 Delete</button>
-          </form>
         </div>
       </div>
     `
       ).join("")
     : `
       <div class="empty">
-        <div class="empty-icon">📂</div>
-        <b>এখনো কোনো project deploy করা হয়নি।</b>
+        <div class="empty-icon" style="font-size:36px; margin-bottom:10px;">📂</div>
+        <b>এখনো কোনো প্রজেক্ট ডিপ্লয় করা হয়নি।</b>
       </div>
     `;
 
@@ -835,7 +839,10 @@ body{
   min-height:100vh;
   font-family:Arial, sans-serif;
   color:var(--text);
-  background:linear-gradient(135deg, var(--bg1), var(--bg2));
+  background:
+    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.25), transparent 40%),
+    radial-gradient(circle at 90% 80%, rgba(0, 102, 255, 0.25), transparent 40%),
+    linear-gradient(135deg, var(--bg1), var(--bg2));
   background-size: 200% 200%;
   animation: liveBackgroundShift 12s ease infinite;
   padding:20px 0 50px;
@@ -846,51 +853,210 @@ body{
   100% { background-position: 0% 50%; }
 }
 .container{width:min(900px, 94%); margin:auto;}
-.card{
-  background:rgba(8,15,35,.88);
-  border:1px solid var(--border); border-radius:18px;
-  padding:22px; margin-bottom:20px;
-  box-shadow:0 20px 60px rgba(0,0,0,.35);
+
+/* Main Card Wrapper with RGB Neon Glow */
+.main-card {
+  position: relative;
+  background: rgba(8, 15, 35, 0.9);
+  border-radius: 20px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
+.main-card::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 22px;
+  background: linear-gradient(90deg, #00d9ff, #0066ff, #8b5cf6, #ff007f, #00d9ff);
+  background-size: 400% 100%;
+  animation: rgbMove 6s linear infinite;
+  z-index: -2;
+  filter: blur(5px);
+  opacity: 0.9;
+}
+.main-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  background: rgba(8, 15, 35, 0.95);
+  z-index: -1;
+}
+@keyframes rgbMove{
+  0%{background-position:0% 50%;}
+  100%{background-position:400% 50%;}
+}
+
 .section-head{
   display:flex; justify-content:space-between;
-  align-items:center; gap:15px; margin-bottom:18px; flex-wrap:wrap;
+  align-items:center; gap:15px; margin-bottom:20px; flex-wrap:wrap;
 }
-.section-head h2{margin:0; font-size:22px; color:var(--c1);}
-.search-wrap{position:relative; width:min(300px, 100%);}
-.search-wrap input{width:100%; padding:10px 10px 10px 38px; border-radius:10px; border:1px solid var(--border); background:#020617; color:white; outline:none;}
+.section-head h2{
+  margin:0; font-size:22px;
+  background: linear-gradient(90deg, var(--c1), var(--c3));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.search-wrap{position:relative; width:min(280px, 100%);}
+.search-wrap input{
+  width:100%; padding:11px 12px 11px 38px; border-radius:12px;
+  border:1px solid var(--border); background:#020617; color:white; outline:none;
+  font-size: 14px;
+}
 .search-icon{position:absolute; left:12px; top:50%; transform:translateY(-50%);}
-.projects{display:grid; gap:12px;}
-.project{
-  display:flex; justify-content:space-between;
-  align-items:center; gap:15px; padding:15px; border-radius:14px;
-  background:rgba(2,6,23,.75); border:1px solid rgba(255,255,255,.08);
-  flex-wrap:wrap;
+
+.projects{display:grid; gap:16px;}
+
+/* Individual Project Card with RGB Neon Border */
+.project-card-wrap {
+  position: relative;
+  border-radius: 16px;
 }
-.project-info{min-width:0; flex:1;}
-.project-topline{display:flex; align-items:center; gap:10px;}
-.project-icon{font-size:18px;}
-.project-name{font-size:16px; font-weight:800; word-break:break-word;}
-.project-id{color:#64748b; font-size:11px;}
-.project-url-row{display:flex; align-items:center; gap:8px; margin-top:8px;}
-.project-url{color:var(--c1); font-size:13px; text-decoration:none; word-break:break-all;}
-.copy-url{border:0; background:rgba(0,217,255,.1); color:#bae6fd; padding:5px 8px; border-radius:6px; cursor:pointer;}
-.project-meta{display:flex; gap:10px; color:#64748b; font-size:11px; margin-top:6px;}
-.project-meta span:last-child{color:#4ade80;}
-.actions{display:flex; gap:6px; flex-wrap:wrap;}
-.action-btn{padding:8px 12px; border-radius:8px; color:white; font-weight:bold; font-size:13px; text-decoration:none; border:0; cursor:pointer;}
-.live-btn{background:#059669;}
-.edit-btn{background:#2563eb;}
-.delete-btn{background:#dc2626;}
-.empty{text-align:center; padding:30px; color:#64748b;}
-.back-btn{display:inline-block; margin-bottom:15px; color:var(--c1); text-decoration:none; font-weight:bold;}
+.project-card-wrap::before {
+  content: "";
+  position: absolute;
+  inset: -1.5px;
+  border-radius: 17px;
+  background: linear-gradient(135deg, var(--c1), var(--c2), var(--c3), #ff007f);
+  background-size: 300% 300%;
+  animation: cardRgbGlow 5s ease infinite alternate;
+  z-index: -2;
+  opacity: 0.8;
+}
+@keyframes cardRgbGlow {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+.project {
+  position: relative;
+  background: rgba(4, 9, 24, 0.96);
+  border-radius: 15px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 1;
+}
+
+.project-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.project-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.project-icon {
+  font-size: 24px;
+  background: rgba(0, 217, 255, 0.1);
+  padding: 8px;
+  border-radius: 10px;
+}
+.project-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f8fafc;
+  word-break: break-word;
+}
+.project-id {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 2px;
+}
+.project-meta-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.live-dot-badge {
+  color: #4ade80;
+  font-weight: bold;
+}
+
+/* URL and Copy Box */
+.project-url-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #020617;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+  border-radius: 10px;
+  gap: 10px;
+}
+.url-text {
+  color: var(--c1);
+  font-size: 13px;
+  font-family: monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.copy-url-btn {
+  border: 0;
+  background: linear-gradient(90deg, rgba(0,217,255,0.2), rgba(0,102,255,0.2));
+  color: #bae6fd;
+  padding: 6px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+.copy-url-btn:hover {
+  background: rgba(0,217,255,0.35);
+}
+
+/* Actions Buttons Row */
+.project-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.action-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 10px;
+  border-radius: 9px;
+  color: white;
+  font-weight: bold;
+  font-size: 13px;
+  text-align: center;
+  text-decoration: none;
+  border: 0;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+}
+.action-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+.live-btn { background: linear-gradient(135deg, #059669, #10b981); }
+.edit-btn { background: linear-gradient(135deg, #2563eb, #3b82f6); }
+.delete-btn { background: linear-gradient(135deg, #dc2626, #ef4444); width: 100%; }
+
+.empty{text-align:center; padding:40px; color:var(--muted);}
+.back-btn{display:inline-block; margin-bottom:15px; color:var(--c1); text-decoration:none; font-weight:bold; font-size:14px;}
 .hidden-project{display:none!important;}
 </style>
 </head>
 <body>
 <div class="container">
 <a href="/" class="back-btn">← Back to Dashboard</a>
-<div class="card">
+<div class="main-card">
   <div class="section-head">
     <h2>📂 My Projects List</h2>
     <div class="search-wrap">
@@ -912,7 +1078,7 @@ const noSearchResult = document.getElementById("noSearchResult");
 if(projectSearch){
   projectSearch.addEventListener("input", ()=>{
     const query = projectSearch.value.trim().toLowerCase();
-    const projects = [...document.querySelectorAll(".project")];
+    const projects = [...document.querySelectorAll(".project-card-wrap")];
     let visible = 0;
     projects.forEach(project=>{
       const text = (project.dataset.search || "").toLowerCase();
@@ -923,13 +1089,14 @@ if(projectSearch){
     noSearchResult.style.display = visible ? "none" : "block";
   });
 }
-document.querySelectorAll(".copy-url").forEach(button=>{
+document.querySelectorAll(".copy-url-btn").forEach(button=>{
   button.addEventListener("click", async()=>{
     const fullUrl = new URL(button.dataset.url || "", window.location.origin).href;
     try{
       await navigator.clipboard.writeText(fullUrl);
-      button.textContent = "✅ Copied";
-      setTimeout(()=> button.textContent = "📋 Copy", 1500);
+      const originalText = button.textContent;
+      button.textContent = "✅ Copied!";
+      setTimeout(()=> button.textContent = originalText, 1500);
     }catch{}
   });
 });
@@ -1198,9 +1365,25 @@ app.use("/site/:sitename", async (req, res, next) => {
 });
 
 // ======================================================
+// SELF-PING SYSTEM (AUTO KEEP-ALIVE FOR RENDER)
+// ======================================================
+
+function startSelfPing() {
+  const PING_INTERVAL = 2.5 * 60 * 1000;
+  
+  setInterval(() => {
+    const appUrl = process.env.RENDER_EXTERNAL_URL || `http://127.0.0.1:${PORT}/`;
+    const client = appUrl.startsWith("https") ? https : http;
+
+    client.get(appUrl, (res) => {}).on("error", (err) => {});
+  }, PING_INTERVAL);
+}
+
+// ======================================================
 // START SERVER
 // ======================================================
 
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  startSelfPing();
 });
