@@ -17,8 +17,8 @@ const metadataFile = path.join(DATA_DIR, "projects.json");
 fs.ensureDirSync(sitesDir);
 fs.ensureDirSync(tempDir);
 
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 const upload = multer({
   dest: tempDir,
@@ -439,17 +439,26 @@ body{
 }
 .header{text-align:center; margin-bottom:20px;}
 .logo{
-  min-height:70px; display:flex;
-  justify-content:center; align-items:center;
-  font-size:clamp(20px, 4vw, 32px);
+  min-height:90px; display:flex; flex-direction:column;
+  justify-content:center; align-items:center; gap:6px;
+  font-size:clamp(18px, 3.5vw, 26px);
   font-weight:900;
+  text-align:center;
 }
-.logo-text{
-  background:linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c1));
-  background-size:300% auto;
+.logo-line1{
+  background:linear-gradient(90deg, var(--c1), var(--c2), var(--c3));
   -webkit-background-clip:text; background-clip:text;
   color:transparent;
   animation:titleGradient 5s linear infinite;
+  background-size:300% auto;
+}
+.logo-line2{
+  font-size:clamp(14px, 2.8vw, 19px);
+  background:linear-gradient(90deg, var(--c3), #ff007f, var(--c1));
+  -webkit-background-clip:text; background-clip:text;
+  color:transparent;
+  animation:titleGradient 5s linear infinite;
+  background-size:300% auto;
 }
 @keyframes titleGradient{
   0%{background-position:0% center;}
@@ -525,11 +534,17 @@ label{display:block; font-weight:bold; margin:14px 0 6px; font-size:15px; color:
 }
 .input-wrap input{position:relative; z-index:2;}
 @keyframes rotateRGB{to{transform:rotate(360deg);}}
-input[type=text], input[type=file]{
+input[type=text], input[type=file], textarea{
   width:100%; padding:12px; border:0; outline:none;
   border-radius:10px; background:#020617; color:white; font-size:15px;
 }
 input[type=file]{border:1px solid rgba(255,255,255,.08);}
+textarea {
+  min-height: 160px;
+  font-family: monospace;
+  resize: vertical;
+  border: 1px solid rgba(255,255,255,.1);
+}
 .drop{
   position:relative; border:2px dashed var(--c1);
   padding:20px; text-align:center; border-radius:14px;
@@ -562,6 +577,31 @@ input[type=file]{border:1px solid rgba(255,255,255,.08);}
 }
 .menu-btn:hover{transform:translateY(-2px);}
 .note{color:#718096; font-size:12px; margin-bottom:12px;}
+
+/* Tabs for File Upload & Code Paste */
+.deploy-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+.tab-btn {
+  flex: 1;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(2,6,23,.8);
+  color: var(--muted);
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.tab-btn.active {
+  background: linear-gradient(90deg, var(--c2), var(--c3));
+  color: white;
+  border-color: transparent;
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
 </style>
 </head>
 <body>
@@ -571,10 +611,11 @@ input[type=file]{border:1px solid rgba(255,255,255,.08);}
 <div class="header">
   <div class="card rgb-card" style="padding: 15px; margin-bottom: 15px;">
     <div class="logo">
-      <div class="logo-text">Personal Website Hosting & Developed BY TâMïM Khan</div>
+      <div class="logo-line1">Personal Website Hosting</div>
+      <div class="logo-line2">Developed BY TâMïM Khan</div>
     </div>
   </div>
-  <div class="subtitle">Upload → Deploy → Manage → Update → Live</div>
+  <div class="subtitle">Upload / Paste → Deploy → Manage → Update → Live</div>
 </div>
 
 <div class="stats-container">
@@ -597,20 +638,38 @@ input[type=file]{border:1px solid rgba(255,255,255,.08);}
 
 <div class="card rgb-card">
   <h2>🚀 নতুন প্রজেক্ট Deploy করুন</h2>
+  
+  <div class="deploy-tabs">
+    <button type="button" class="tab-btn active" onclick="switchTab('file')">📁 File / ZIP Upload</button>
+    <button type="button" class="tab-btn" onclick="switchTab('code')">💻 Code Paste (HTML)</button>
+  </div>
+
   <form id="deployForm" action="/deploy" method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="deployMode" id="deployMode" value="file">
+    
     <label>Project Name</label>
     <div class="input-wrap">
       <input type="text" name="sitename" required placeholder="my-project" pattern="[A-Za-z0-9_-]+" maxlength="50"/>
     </div>
     <div class="note">শুধু English letters, numbers, - এবং _ ব্যবহার করুন।</div>
-    <label>Website Files</label>
-    <div id="dropBox" class="drop">
-      <div style="font-size:32px; margin-bottom:6px">📦</div>
-      <div style="font-size:15px; font-weight:bold">HTML / CSS / JS অথবা ZIP ফাইল নির্বাচন করুন</div>
-      <div style="margin:6px 0 10px; color:#64748b; font-size:12px">Drag & Drop করেও file দেওয়া যাবে</div>
-      <input type="file" id="fileInput" name="projectfiles" multiple required accept=".html, .htm, .css, .js, .json, .png, .jpg, .jpeg, .gif, .svg, .webp, .ico, .txt, .zip">
-      <div id="fileStatus" style="margin-top:8px; color:#64748b; font-size:12px">কোনো file নির্বাচন করা হয়নি</div>
+
+    <div id="fileTabContent" class="tab-content active">
+      <label>Website Files</label>
+      <div id="dropBox" class="drop">
+        <div style="font-size:32px; margin-bottom:6px">📦</div>
+        <div style="font-size:15px; font-weight:bold">HTML / CSS / JS অথবা ZIP ফাইল নির্বাচন করুন</div>
+        <div style="margin:6px 0 10px; color:#64748b; font-size:12px">Drag & Drop করেও file দেওয়া যাবে</div>
+        <input type="file" id="fileInput" name="projectfiles" multiple accept=".html, .htm, .css, .js, .json, .png, .jpg, .jpeg, .gif, .svg, .webp, .ico, .txt, .zip">
+        <div id="fileStatus" style="margin-top:8px; color:#64748b; font-size:12px">কোনো file নির্বাচন করা হয়নি</div>
+      </div>
     </div>
+
+    <div id="codeTabContent" class="tab-content">
+      <label>Direct HTML Code (কপি-পেস্ট)</label>
+      <textarea name="htmlcode" placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><title>My Site</title></head>&#10;<body>&#10;  <h1>Hello World</h1>&#10;</body>&#10;</html>"></textarea>
+      <div class="note" style="margin-top: 6px;">এখানে ডিরেক্ট HTML কোড পেস্ট করে সরাসরি লাইভ করতে পারবেন।</div>
+    </div>
+
     <button id="deployBtn" class="deploy-btn" type="submit">🚀 DEPLOY WEBSITE</button>
   </form>
 </div>
@@ -624,6 +683,24 @@ input[type=file]{border:1px solid rgba(255,255,255,.08);}
 </div>
 
 <script>
+function switchTab(mode) {
+  document.getElementById("deployMode").value = mode;
+  const buttons = document.querySelectorAll(".tab-btn");
+  buttons.forEach(b => b.classList.remove("active"));
+  
+  if(mode === 'file') {
+    buttons[0].classList.add("active");
+    document.getElementById("fileTabContent").classList.add("active");
+    document.getElementById("codeTabContent").classList.remove("active");
+    document.getElementById("fileInput").required = true;
+  } else {
+    buttons[1].classList.add("active");
+    document.getElementById("fileTabContent").classList.remove("active");
+    document.getElementById("codeTabContent").classList.add("active");
+    document.getElementById("fileInput").required = false;
+  }
+}
+
 const fileInput = document.getElementById("fileInput");
 const fileStatus = document.getElementById("fileStatus");
 if(fileInput){
@@ -871,10 +948,11 @@ app.post(
   upload.array("projectfiles", 50),
   async (req, res) => {
     const siteName = sanitizeSiteName(req.body.sitename);
+    const deployMode = req.body.deployMode;
     const files = req.files || [];
 
-    if (!siteName || !files.length) {
-      return res.status(400).send("Invalid project name or files.");
+    if (!siteName) {
+      return res.status(400).send("Invalid project name.");
     }
 
     const targetDir = safeJoin(sitesDir, siteName);
@@ -883,31 +961,43 @@ app.post(
       await fs.remove(targetDir);
       await fs.ensureDir(targetDir);
 
-      if (
-        files.length === 1 &&
-        path.extname(files[0].originalname).toLowerCase() === ".zip"
-      ) {
-        const zip = new AdmZip(files[0].path);
-        const entries = zip.getEntries();
-
-        for (const entry of entries) {
-          if (entry.isDirectory) continue;
-          let entryName = entry.entryName.replace(/\\/g, "/");
-          entryName = entryName.replace(/^\/+/, "").replace(/^(\.\.\/)+/, "");
-          if (!entryName) continue;
-
-          const outputPath = safeJoin(targetDir, entryName);
-          await fs.ensureDir(path.dirname(outputPath));
-          fs.writeFileSync(outputPath, entry.getData());
+      if (deployMode === "code") {
+        const htmlCode = req.body.htmlcode || "";
+        if (!htmlCode.trim()) {
+          return res.status(400).send("HTML code cannot be empty.");
+        }
+        fs.writeFileSync(path.join(targetDir, "index.html"), htmlCode, "utf8");
+      } else {
+        if (!files.length) {
+          return res.status(400).send("No files uploaded.");
         }
 
-        await fs.remove(files[0].path);
-        await flattenSingleFolder(targetDir);
-      } else {
-        for (const file of files) {
-          const safeName = sanitizeFileName(file.originalname);
-          const destination = safeJoin(targetDir, safeName);
-          await fs.move(file.path, destination, { overwrite: true });
+        if (
+          files.length === 1 &&
+          path.extname(files[0].originalname).toLowerCase() === ".zip"
+        ) {
+          const zip = new AdmZip(files[0].path);
+          const entries = zip.getEntries();
+
+          for (const entry of entries) {
+            if (entry.isDirectory) continue;
+            let entryName = entry.entryName.replace(/\\/g, "/");
+            entryName = entryName.replace(/^\/+/, "").replace(/^(\.\.\/)+/, "");
+            if (!entryName) continue;
+
+            const outputPath = safeJoin(targetDir, entryName);
+            await fs.ensureDir(path.dirname(outputPath));
+            fs.writeFileSync(outputPath, entry.getData());
+          }
+
+          await fs.remove(files[0].path);
+          await flattenSingleFolder(targetDir);
+        } else {
+          for (const file of files) {
+            const safeName = sanitizeFileName(file.originalname);
+            const destination = safeJoin(targetDir, safeName);
+            await fs.move(file.path, destination, { overwrite: true });
+          }
         }
       }
 
